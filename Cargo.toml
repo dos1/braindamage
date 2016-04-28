@@ -1,0 +1,6 @@
+[package]
+name = "braindamage"
+version = "0.1.0"
+authors = ["Sebastian Krzyszkowiak <dos@dosowisko.net>"]
+
+[dependencies]
