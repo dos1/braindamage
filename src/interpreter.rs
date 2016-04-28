@@ -61,20 +61,20 @@ impl State {
 
 pub fn run(buffer: String) {
     let mut state = State::new();
-    let mut loops: Vec<i32> = vec![];
+    let mut loops: Vec<usize> = vec![];
     let mut skip = false;
-    let mut skip_index = -1;
-    let mut i = 0;
+    let mut skip_index: usize = -1;
+    let mut i: usize = 0;
     while i < buffer.len() {
         let instruction = buffer.chars().nth(i).unwrap();
         //println!("position: {}, state: {}; executing now: {}", i, state, instruction);
         if skip {
             if instruction == '[' {
-                loops.push(i as i32);
+                loops.push(i);
             } else if instruction == ']' {
                 if loops.pop().unwrap() == skip_index {
                     skip = false;
-                    i = skip_index as usize;
+                    i = skip_index;
                     continue;
                 }
             }
@@ -92,15 +92,15 @@ pub fn run(buffer: String) {
             '[' => {
                 if state.get_value() == 0 {
                     skip = true;
-                    skip_index = i as i32;
+                    skip_index = i;
                 } else {
-                    loops.push(i as i32);
+                    loops.push(i);
                 }
             },
             ']' => {
                 let start = loops.pop().unwrap();
                 if state.get_value() != 0 {
-                    i = start as usize;
+                    i = start;
                     continue;
                 }
             },
