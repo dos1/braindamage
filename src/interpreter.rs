@@ -9,7 +9,7 @@ const MEMORY_SIZE: usize = 100000;
 
 struct State {
     pointer: i32,
-    memory: [Wrapping<i8>; MEMORY_SIZE]
+    memory: [Wrapping<i32>; MEMORY_SIZE]
 }
 
 impl fmt::Display for State {
@@ -35,11 +35,11 @@ impl State {
         self.add_to_pointer(-1)
     }
     
-    pub fn set_value(&mut self, value: i8) {
+    pub fn set_value(&mut self, value: i32) {
         self.memory[self.pointer as usize] = Wrapping(value);
     }
     
-    pub fn get_value(&self) -> i8 {
+    pub fn get_value(&self) -> i32 {
         self.memory[self.pointer as usize].0
     }
     
@@ -47,7 +47,7 @@ impl State {
         self.pointer
     }
     
-    fn add_to_value(&mut self, value: i8) {
+    fn add_to_value(&mut self, value: i32) {
         self.memory[self.pointer as usize] += Wrapping(value);
     }
     
@@ -88,8 +88,9 @@ pub fn run(code: &str) {
             '-' => state.decrement_value(),
             '.' => print!("{}", char::from_u32(state.get_value() as u32).unwrap()),
             ',' => {
-                let input: Option<i8> = io::stdin().bytes().next().and_then(|result| result.ok()).map(|byte| byte as i8);
-                state.set_value(input.unwrap());
+                let stdin = io::stdin();
+                let input = stdin.lock().bytes().next().unwrap_or(Ok(0)).unwrap(); // EOF = \0
+                state.set_value(input as i32);
             },
             '[' => {
                 if state.get_value() == 0 {
