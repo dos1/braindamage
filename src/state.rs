@@ -1,26 +1,27 @@
 use std::num::Wrapping;
 use std::fmt;
 
-const MEMORY_SIZE: usize = 100000;
-
 pub struct State {
     pointer: i32,
-    memory: [Wrapping<i32>; MEMORY_SIZE]
+    memory: Vec<Wrapping<i32>>
 }
 
 impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<pointer address: {}, value: {}>", self.get_pointer(), self.get_value())
+        write!(f, "<pointer address: {}, value: {}, length: {}>", self.get_pointer(), self.get_value(), self.memory.len())
     }
 }
 
 impl State {
     pub fn new() -> State { 
-        State { pointer: 0, memory: [Wrapping(0); MEMORY_SIZE] }
+        State { pointer: 0, memory: vec![Wrapping(0)] }
     }
     
     fn add_to_pointer(&mut self, value: i32) {
         self.pointer = self.pointer + value;
+        while self.pointer as usize >= self.memory.len() {
+            self.memory.push(Wrapping(0));
+        }
     }
     
     pub fn increment_pointer(&mut self) {

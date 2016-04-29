@@ -1,12 +1,14 @@
 # BrainDamage
 A simple engine for writing games using Brainfuck, written in Rust.
 
-## Brainfuck constraints
+## Brainfuck details
 As some details of Brainfuck are not defined in the language, this is the set of rules assumed in BrainDamage:
-* 100000 memory cells
+* unlimited number of 32-bit signed memory cells
 * no negative indexes
-* 32-bit signed wrapping cells
-* EOF writes 0 to selected cell
+* cells wrap on overflow
+* EOF returns 0
+* IO is blocking and buffered
+* no newline translation
 
 Also, until *Read::chars()* in Rust is marked as stable, multibyte characters received from input are split per byte.
 

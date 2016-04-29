@@ -11,7 +11,7 @@ pub fn run(code: &str) {
     let mut skip_index: usize = 0;
     let mut i: usize = 0;
     let buffer: Vec<char> = code.chars().map(|x| if x.is_ascii() { x } else { '_' }).collect(); // filter out characters larger than 8-bit to simplify indexing
-     while i < buffer.len() {
+    while i < buffer.len() {
         let instruction = buffer[i];
         //println!("position: {}, state: {}; executing now: {}", i, state, instruction);
         if skip {
