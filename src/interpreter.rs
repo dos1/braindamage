@@ -3,6 +3,7 @@ use std::io;
 use std::io::Read;
 use std::num::Wrapping;
 use std::fmt;
+use std::ascii::AsciiExt;
 
 const MEMORY_SIZE: usize = 100000;
 
@@ -59,14 +60,15 @@ impl State {
     }
 }
 
-pub fn run(buffer: String) {
+pub fn run(code: &str) {
     let mut state = State::new();
     let mut loops: Vec<usize> = vec![];
     let mut skip = false;
-    let mut skip_index: usize = -1;
+    let mut skip_index: usize = 0;
     let mut i: usize = 0;
-    while i < buffer.len() {
-        let instruction = buffer.chars().nth(i).unwrap();
+    let buffer: Vec<char> = code.chars().map(|x| if x.is_ascii() { x } else { '_' }).collect(); // filter out characters larger than 8-bit to simplify indexing
+     while i < buffer.len() {
+        let instruction = buffer[i];
         //println!("position: {}, state: {}; executing now: {}", i, state, instruction);
         if skip {
             if instruction == '[' {
