@@ -1,10 +1,10 @@
 use state::State;
+use input::Input;
 use std::char;
-use std::io;
 use std::io::Read;
 use std::ascii::AsciiExt;
 
-pub fn run(code: &str) {
+pub fn run(code: &str, input: &mut Input) {
     let mut state = State::new();
     let mut loops: Vec<usize> = vec![];
     let mut skip = false;
@@ -30,9 +30,8 @@ pub fn run(code: &str) {
             '-' => state.decrement_value(),
             '.' => print!("{}", char::from_u32(state.get_value() as u32).unwrap()),
             ',' => {
-                let stdin = io::stdin();
-                let input = stdin.lock().bytes().next().unwrap_or(Ok(0)).unwrap(); // EOF = \0
-                state.set_value(input as i32);
+                let data = input.bytes().nth(0).unwrap_or(Ok(0)).unwrap(); // EOF = \0
+                state.set_value(data as i32);
             },
             '[' => {
                 if state.get_value() == 0 {
