@@ -13,14 +13,14 @@ impl Input {
         Input::Standard(io::stdin())
     }
 
-    pub fn file(path: String) -> io::Result<Input> {
+    pub fn file(path: &str) -> io::Result<Input> {
         Ok(Input::File(try!(fs::File::open(path))))
     }
 
     pub fn from_arg(arg: Option<String>) -> io::Result<Input> {
         Ok(match arg {
             None       => Input::stdin(),
-            Some(path) => try!(Input::file(path))
+            Some(path) => try!(Input::file(&*path))
         })
     }
 }
