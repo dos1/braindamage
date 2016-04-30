@@ -13,15 +13,13 @@ pub fn run(code: &str) {
     let buffer: Vec<char> = code.chars().map(|x| if x.is_ascii() { x } else { '_' }).collect(); // filter out characters larger than 8-bit to simplify indexing
     while i < buffer.len() {
         let instruction = buffer[i];
-        //println!("position: {}, state: {}; executing now: {}", i, state, instruction);
+        //println!("position: {}, state: {}; executing now: {}, skip: {}", i, state, instruction, skip);
         if skip {
             if instruction == '[' {
                 loops.push(i);
             } else if instruction == ']' {
                 if loops.pop().unwrap() == skip_index {
                     skip = false;
-                    i = skip_index;
-                    continue;
                 }
             }
         } else {
@@ -40,9 +38,8 @@ pub fn run(code: &str) {
                 if state.get_value() == 0 {
                     skip = true;
                     skip_index = i;
-                } else {
-                    loops.push(i);
                 }
+                loops.push(i);
             },
             ']' => {
                 let start = loops.pop().unwrap();
