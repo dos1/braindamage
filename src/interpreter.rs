@@ -1,55 +1,89 @@
 use state::State;
-use input::Input;
-use std::char;
+use stream::{Input, Output};
 use std::io::Read;
 use std::ascii::AsciiExt;
 
-pub fn run(code: &str, input: &mut Input) {
-    let mut state = State::new();
-    let mut loops: Vec<usize> = vec![];
-    let mut skip = false;
-    let mut skip_index: usize = 0;
-    let mut i: usize = 0;
-    let buffer: Vec<char> = code.chars().map(|x| if x.is_ascii() { x } else { '_' }).collect(); // filter out characters larger than 8-bit to simplify indexing
-    while i < buffer.len() {
-        let instruction = buffer[i];
-        //println!("position: {}, state: {}; executing now: {}, skip: {}", i, state, instruction, skip);
-        if skip {
+struct Routine<'input> {
+    code: Vec<char>,
+    state: State,
+    position: usize,
+    loops: Vec<usize>,
+    skip: bool,
+    skip_index: usize,
+    input: &'input mut Input
+}
+
+impl<'input> Routine<'input> {
+    fn new(code: &str, input: &'input mut Input) -> Routine<'input> {
+        let buffer: Vec<char> = code.chars().map(|x| if x.is_ascii() { x } else { '_' }).collect(); // filter out characters larger than 8-bit to simplify indexing
+        Routine { code: buffer, position: 0, state: State::new(), loops: vec![], skip: false, skip_index: 0, input: input }
+    }
+    
+    fn exec(&mut self) -> Option<i32> {
+        let instruction = self.code[self.position];
+        let mut result : Option<i32> = None;
+        //println!("position: {}, state: {}; executing now: '{}', skip: {}", self.position, self.state, instruction, self.skip);
+        if self.skip {
             if instruction == '[' {
-                loops.push(i);
+                self.loops.push(self.position);
             } else if instruction == ']' {
-                if loops.pop().unwrap() == skip_index {
-                    skip = false;
+                if self.loops.pop().unwrap() == self.skip_index {
+                    self.skip = false;
                 }
             }
         } else {
           match instruction {
-            '<' => state.decrement_pointer(),
-            '>' => state.increment_pointer(),
-            '+' => state.increment_value(),
-            '-' => state.decrement_value(),
-            '.' => print!("{}", char::from_u32(state.get_value() as u32).unwrap()),
+            '<' => self.state.decrement_pointer(),
+            '>' => self.state.increment_pointer(),
+            '+' => self.state.increment_value(),
+            '-' => self.state.decrement_value(),
+            '.' => result = Some(self.state.get_value()),
             ',' => {
-                let data = input.bytes().nth(0).unwrap_or(Ok(0)).unwrap(); // EOF = \0
-                state.set_value(data as i32);
+                let data = self.input.read_value().unwrap_or(0); // EOF = '\0'
+                self.state.set_value(data as i32);
             },
             '[' => {
-                if state.get_value() == 0 {
-                    skip = true;
-                    skip_index = i;
+                if self.state.get_value() == 0 {
+                    self.skip = true;
+                    self.skip_index = self.position;
                 }
-                loops.push(i);
+                self.loops.push(self.position);
             },
             ']' => {
-                let start = loops.pop().unwrap();
-                if state.get_value() != 0 {
-                    i = start;
-                    continue;
+                let start = self.loops.pop().unwrap();
+                if self.state.get_value() != 0 {
+                    self.position = start;
+                    return result;
                 }
             },
             _ => {}
           }
         }
-        i += 1;
+        self.position += 1;
+        
+        return result;
     }
+}
+
+impl<'input> Iterator for Routine<'input> {
+    type Item = Option<i32>;
+
+    fn next(&mut self) -> Option<Option<i32>> {
+        if self.position < self.code.len() {
+            Some(self.exec())
+        } else {
+            None
+        }
+    }
+
+}
+
+pub fn run(code: &str, input: &mut Input, output: &mut Output) {
+
+    for data in Routine::new(code, input) {
+        if data.is_some() {
+            output.write_value(data.unwrap()).unwrap();
+        }
+    }
+    
 }
