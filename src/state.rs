@@ -21,6 +21,9 @@ impl State {
     
     fn add_to_pointer(&mut self, value: i32) {
         self.pointer = self.pointer + value;
+        if self.pointer < 0 {
+            panic!("tried to set the pointer to negative address");
+        }
         while self.pointer as usize >= self.memory.len() {
             self.memory.push(Wrapping(0));
         }
@@ -105,5 +108,12 @@ mod tests {
         state.set_value(i32::min_value());
         state.decrement_value();
         assert!(state.get_value() > 0);
+    }
+    
+    #[test]
+    #[should_panic(expected = "tried to set the pointer to negative address")]
+    fn negative_index() {
+        let mut state = State::new();
+        state.decrement_pointer();
     }
 }

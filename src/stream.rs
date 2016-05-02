@@ -71,6 +71,7 @@ impl<'stream> OutputInterface<'stream> {
 pub struct MemoryStream {
     memory: Vec<i32>,
     buffer: Vec<u8>,
+    cur_data: i32,
     position: i8
 }
 
@@ -103,6 +104,12 @@ impl Input for MemoryStream {
     }
 }
 
+impl Input for io::Empty {
+    fn read_value(&mut self) -> io::Result<i32> {
+        Err(io::Error::new(io::ErrorKind::UnexpectedEof, "EOF"))
+    }
+}
+
 impl Output for io::Stdout {
     fn write_value(&mut self, value: i32) -> io::Result<()> {
         // UTF-8
@@ -128,25 +135,31 @@ impl Output for MemoryStream {
     }
 }
 
+impl Output for io::Sink {
+    fn write_value(&mut self, _: i32) -> io::Result<()> {
+        Ok({})
+    }
+}
+
 impl InputOutput for MemoryStream {}
 
 impl io::Read for MemoryStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        if self.memory.len() > 0 {
-            let mut data = self.memory.remove(0);
+        if self.memory.len() > 0 || self.position > 0 {
             let mut size = 0;
             for field in buf {
+                if self.position == 0 {
+                    self.cur_data = self.memory.remove(0);
+                }
                 unsafe {
-                    let bytes = mem::transmute::<i32, [u8; 4]>(data);
+                    let bytes = mem::transmute::<i32, [u8; 4]>(self.cur_data);
                     *field = bytes[self.position as usize];
                 }
                 self.position += 1;
                 size += 1;
                 if self.position == 4 {
                     self.position = 0;
-                    if self.memory.len() > 0 {
-                        data = self.memory.remove(0);
-                    } else {
+                    if self.memory.len() == 0 {
                         return Ok(size)
                     }
                 }
@@ -184,7 +197,7 @@ impl io::Write for MemoryStream {
 #[allow(dead_code)]
 impl MemoryStream {
     pub fn new() -> MemoryStream {
-        MemoryStream { memory: vec![], position: 0, buffer: vec![] }
+        MemoryStream { memory: vec![], position: 0, buffer: vec![], cur_data: 0 }
     }
 }
 
@@ -192,6 +205,7 @@ impl MemoryStream {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cell::RefCell;
     use std::io::Read;
     use std::io::Write;
 
@@ -200,7 +214,61 @@ mod tests {
         let mut stream = MemoryStream::new();
         stream.write(&[0, 1, 2, 3]).unwrap();
         for (i, byte) in stream.bytes().enumerate() {
-            assert!(i as u8 == byte.unwrap());
+            assert_eq!(i as u8, byte.unwrap());
         }
+    }
+    
+    #[test]
+    fn write_and_read_value() {
+        let mut stream = MemoryStream::new();
+        stream.write_value(42).unwrap();
+        assert_eq!(stream.read_value().unwrap(), 42);
+    }
+    
+    #[test]
+    fn interfaces() {
+        let stream: RefCell<Box<InputOutput>> = RefCell::new(Box::new(MemoryStream::new()));
+        let input = InputInterface::new(&stream);
+        let mut output = OutputInterface::new(&stream);
+        output.write(&[0, 1, 2, 3]).unwrap();
+        for (i, byte) in input.bytes().enumerate() {
+            assert_eq!(i as u8, byte.unwrap());
+        }
+    }
+    
+    #[test]
+    fn partial_write() {
+        let mut stream = MemoryStream::new();
+        stream.write(&[0]).unwrap();
+        stream.write(&[1, 2]).unwrap();
+        stream.write(&[3, 4]).unwrap();
+        stream.write(&[5, 6, 7]).unwrap();
+        stream.write(&[8, 9, 10]).unwrap(); // stray values, shouldn't be read
+        assert_eq!(stream.read_value().unwrap(), 0x03020100);
+        assert_eq!(stream.read_value().unwrap(), 0x07060504);
+        assert!(stream.read_value().is_err());
+    }
+    
+    #[test]
+    fn partial_read() {
+        let mut stream = MemoryStream::new();
+        stream.write_value(0x03020100).unwrap();
+        stream.write_value(0x07060504).unwrap();
+        let mut buf1 = [0u8];
+        assert_eq!(stream.read(&mut buf1).unwrap(), 1);
+        assert_eq!(buf1[0], 0);
+        let mut buf2 = [0u8; 2];
+        assert_eq!(stream.read(&mut buf2).unwrap(), 2);
+        assert_eq!(buf2[0], 1);
+        assert_eq!(buf2[1], 2);
+        assert_eq!(stream.read(&mut buf2).unwrap(), 2);
+        assert_eq!(buf2[0], 3);
+        assert_eq!(buf2[1], 4);
+        let mut buf4 = [0u8; 4];
+        assert_eq!(stream.read(&mut buf4).unwrap(), 3);
+        assert_eq!(buf4[0], 5);
+        assert_eq!(buf4[1], 6);
+        assert_eq!(buf4[2], 7);
+        assert_eq!(buf4[3], 0);
     }
 }
