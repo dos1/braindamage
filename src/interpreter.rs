@@ -40,7 +40,7 @@ impl<'input> Routine<'input> {
             '.' => result = Some(self.state.get_value()),
             ',' => {
                 let data = self.input.read_value().unwrap_or(0); // EOF = '\0'
-                self.state.set_value(data as i32);
+                self.state.set_value(data);
             },
             '[' => {
                 if self.state.get_value() == 0 {

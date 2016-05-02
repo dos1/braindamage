@@ -3,6 +3,8 @@ use std::io::Read;
 use std::io::Write;
 use std::fs;
 use std::mem;
+use std::cell::RefCell;
+
 
 pub trait Input: io::Read {
     fn read_value(&mut self) -> io::Result<i32>;
@@ -12,7 +14,58 @@ pub trait Output: io::Write {
     fn write_value(&mut self, value: i32) -> io::Result<()>;
 }
 
-pub trait Stream: Input + Output {}
+pub trait InputOutput: Input + Output {}
+
+#[allow(dead_code)]
+pub struct InputInterface<'stream> {
+    stream: &'stream RefCell<Box<InputOutput>>
+}
+
+impl<'stream> Input for InputInterface<'stream> {
+    fn read_value(&mut self) -> io::Result<i32> {
+        self.stream.borrow_mut().read_value()
+    }
+}
+
+impl<'stream> io::Read for InputInterface<'stream> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.stream.borrow_mut().read(buf)
+    }
+}
+
+#[allow(dead_code)]
+impl<'stream> InputInterface<'stream> {
+    pub fn new(stream: &'stream RefCell<Box<InputOutput>>) -> InputInterface<'stream> {
+        InputInterface { stream: stream }
+    }
+}
+
+#[allow(dead_code)]
+pub struct OutputInterface<'stream> {
+    stream: &'stream RefCell<Box<InputOutput>>
+}
+
+impl<'stream> Output for OutputInterface<'stream> {
+    fn write_value(&mut self, value: i32) -> io::Result<()> {
+        self.stream.borrow_mut().write_value(value)
+    }
+}
+
+impl<'stream> io::Write for OutputInterface<'stream> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.stream.borrow_mut().write(buf)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        self.stream.borrow_mut().flush()
+    }
+}
+
+#[allow(dead_code)]
+impl<'stream> OutputInterface<'stream> {
+    pub fn new(stream: &'stream RefCell<Box<InputOutput>>) -> OutputInterface<'stream> {
+        OutputInterface { stream: stream }
+    }
+}
 
 #[allow(dead_code)]
 pub struct MemoryStream {
@@ -74,6 +127,8 @@ impl Output for MemoryStream {
         Ok({})
     }
 }
+
+impl InputOutput for MemoryStream {}
 
 impl io::Read for MemoryStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
