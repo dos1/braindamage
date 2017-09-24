@@ -1,6 +1,5 @@
 use state::State;
 use stream::{Input, Output};
-use std::io::Read;
 use std::ascii::AsciiExt;
 
 struct Routine<'input> {
