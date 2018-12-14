@@ -1,6 +1,5 @@
 use state::State;
 use stream::{Input, Output};
-use std::ascii::AsciiExt;
 
 struct Routine<'input> {
     code: Vec<char>,
