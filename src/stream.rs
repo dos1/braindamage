@@ -1,10 +1,9 @@
+use std::cell::RefCell;
+use std::fs;
 use std::io;
 use std::io::Read;
 use std::io::Write;
-use std::fs;
 use std::mem;
-use std::cell::RefCell;
-
 
 pub trait Input: io::Read {
     fn read_value(&mut self) -> io::Result<i32>;
@@ -18,7 +17,7 @@ pub trait InputOutput: Input + Output {}
 
 #[allow(dead_code)]
 pub struct InputInterface<'stream> {
-    stream: &'stream RefCell<Box<dyn InputOutput>>
+    stream: &'stream RefCell<Box<dyn InputOutput>>,
 }
 
 impl<'stream> Input for InputInterface<'stream> {
@@ -42,7 +41,7 @@ impl<'stream> InputInterface<'stream> {
 
 #[allow(dead_code)]
 pub struct OutputInterface<'stream> {
-    stream: &'stream RefCell<Box<dyn InputOutput>>
+    stream: &'stream RefCell<Box<dyn InputOutput>>,
 }
 
 impl<'stream> Output for OutputInterface<'stream> {
@@ -72,7 +71,7 @@ pub struct MemoryStream {
     memory: Vec<i32>,
     buffer: Vec<u8>,
     cur_data: i32,
-    position: i8
+    position: i8,
 }
 
 impl Input for io::Stdin {
@@ -83,7 +82,7 @@ impl Input for io::Stdin {
 
 impl Input for fs::File {
     fn read_value(&mut self) -> io::Result<i32> {
-        let mut bytes:[u8; 4] = [0; 4];
+        let mut bytes: [u8; 4] = [0; 4];
         let mut iterator = self.bytes();
         for i in 0..3 {
             bytes[i] = iterator.next().unwrap()?;
@@ -119,7 +118,7 @@ impl Output for io::Stdout {
 }
 
 impl Output for fs::File {
-    fn write_value(&mut self, value: i32) -> io::Result<()> {    
+    fn write_value(&mut self, value: i32) -> io::Result<()> {
         // binary
         unsafe {
             let bytes = mem::transmute::<i32, [u8; 4]>(value);
@@ -160,7 +159,7 @@ impl io::Read for MemoryStream {
                 if self.position == 4 {
                     self.position = 0;
                     if self.memory.len() == 0 {
-                        return Ok(size)
+                        return Ok(size);
                     }
                 }
             }
@@ -172,7 +171,6 @@ impl io::Read for MemoryStream {
 }
 
 impl io::Write for MemoryStream {
-
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let mut i = 0;
         for data in buf.iter() {
@@ -190,17 +188,23 @@ impl io::Write for MemoryStream {
         }
         Ok(i)
     }
-    
-    fn flush(&mut self) -> io::Result<()> { Ok({}) }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok({})
+    }
 }
 
 #[allow(dead_code)]
 impl MemoryStream {
     pub fn new() -> MemoryStream {
-        MemoryStream { memory: vec![], position: 0, buffer: vec![], cur_data: 0 }
+        MemoryStream {
+            memory: vec![],
+            position: 0,
+            buffer: vec![],
+            cur_data: 0,
+        }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -217,14 +221,14 @@ mod tests {
             assert_eq!(i as u8, byte.unwrap());
         }
     }
-    
+
     #[test]
     fn write_and_read_value() {
         let mut stream = MemoryStream::new();
         stream.write_value(42).unwrap();
         assert_eq!(stream.read_value().unwrap(), 42);
     }
-    
+
     #[test]
     fn interfaces() {
         let stream: RefCell<Box<dyn InputOutput>> = RefCell::new(Box::new(MemoryStream::new()));
@@ -235,7 +239,7 @@ mod tests {
             assert_eq!(i as u8, byte.unwrap());
         }
     }
-    
+
     #[test]
     fn partial_write() {
         let mut stream = MemoryStream::new();
@@ -248,7 +252,7 @@ mod tests {
         assert_eq!(stream.read_value().unwrap(), 0x07060504);
         assert!(stream.read_value().is_err());
     }
-    
+
     #[test]
     fn partial_read() {
         let mut stream = MemoryStream::new();
