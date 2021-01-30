@@ -35,7 +35,7 @@ impl<'stream> io::Read for InputInterface<'stream> {
 #[allow(dead_code)]
 impl<'stream> InputInterface<'stream> {
     pub fn new(stream: &'stream RefCell<Box<dyn InputOutput>>) -> InputInterface<'stream> {
-        InputInterface { stream: stream }
+        InputInterface { stream }
     }
 }
 
@@ -62,7 +62,7 @@ impl<'stream> io::Write for OutputInterface<'stream> {
 #[allow(dead_code)]
 impl<'stream> OutputInterface<'stream> {
     pub fn new(stream: &'stream RefCell<Box<dyn InputOutput>>) -> OutputInterface<'stream> {
-        OutputInterface { stream: stream }
+        OutputInterface { stream }
     }
 }
 
@@ -76,7 +76,7 @@ pub struct MemoryStream {
 
 impl Input for io::Stdin {
     fn read_value(&mut self) -> io::Result<i32> {
-        return Ok(self.bytes().nth(0).unwrap()? as i32);
+        Ok(self.bytes().next().unwrap()? as i32)
     }
 }
 
@@ -84,18 +84,16 @@ impl Input for fs::File {
     fn read_value(&mut self) -> io::Result<i32> {
         let mut bytes: [u8; 4] = [0; 4];
         let mut iterator = self.bytes();
-        for i in 0..3 {
-            bytes[i] = iterator.next().unwrap()?;
+        for i in bytes.iter_mut() {
+            *i = iterator.next().unwrap()?;
         }
-        unsafe {
-            return Ok(mem::transmute::<[u8; 4], i32>(bytes));
-        }
+        unsafe { Ok(mem::transmute::<[u8; 4], i32>(bytes)) }
     }
 }
 
 impl Input for MemoryStream {
     fn read_value(&mut self) -> io::Result<i32> {
-        if self.memory.len() > 0 {
+        if !self.memory.is_empty() {
             Ok(self.memory.remove(0))
         } else {
             Err(io::Error::new(io::ErrorKind::UnexpectedEof, "EOF"))
@@ -112,8 +110,8 @@ impl Input for io::Empty {
 impl Output for io::Stdout {
     fn write_value(&mut self, value: i32) -> io::Result<()> {
         // UTF-8
-        self.write(&[value as u8])?;
-        Ok({})
+        self.write_all(&[value as u8])?;
+        Ok(())
     }
 }
 
@@ -122,21 +120,21 @@ impl Output for fs::File {
         // binary
         unsafe {
             let bytes = mem::transmute::<i32, [u8; 4]>(value);
-            self.write(&bytes)?;
+            self.write_all(&bytes)?;
         }
-        Ok({})
+        Ok(())
     }
 }
 impl Output for MemoryStream {
     fn write_value(&mut self, value: i32) -> io::Result<()> {
         self.memory.push(value);
-        Ok({})
+        Ok(())
     }
 }
 
 impl Output for io::Sink {
     fn write_value(&mut self, _: i32) -> io::Result<()> {
-        Ok({})
+        Ok(())
     }
 }
 
@@ -144,7 +142,7 @@ impl InputOutput for MemoryStream {}
 
 impl io::Read for MemoryStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        if self.memory.len() > 0 || self.position > 0 {
+        if !self.memory.is_empty() || self.position > 0 {
             let mut size = 0;
             for field in buf {
                 if self.position == 0 {
@@ -158,7 +156,7 @@ impl io::Read for MemoryStream {
                 size += 1;
                 if self.position == 4 {
                     self.position = 0;
-                    if self.memory.len() == 0 {
+                    if self.memory.is_empty() {
                         return Ok(size);
                     }
                 }
@@ -190,7 +188,7 @@ impl io::Write for MemoryStream {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        Ok({})
+        Ok(())
     }
 }
 
@@ -216,7 +214,7 @@ mod tests {
     #[test]
     fn write_and_read() {
         let mut stream = MemoryStream::new();
-        stream.write(&[0, 1, 2, 3]).unwrap();
+        stream.write_all(&[0, 1, 2, 3]).unwrap();
         for (i, byte) in stream.bytes().enumerate() {
             assert_eq!(i as u8, byte.unwrap());
         }
@@ -234,7 +232,7 @@ mod tests {
         let stream: RefCell<Box<dyn InputOutput>> = RefCell::new(Box::new(MemoryStream::new()));
         let input = InputInterface::new(&stream);
         let mut output = OutputInterface::new(&stream);
-        output.write(&[0, 1, 2, 3]).unwrap();
+        output.write_all(&[0, 1, 2, 3]).unwrap();
         for (i, byte) in input.bytes().enumerate() {
             assert_eq!(i as u8, byte.unwrap());
         }
@@ -243,11 +241,11 @@ mod tests {
     #[test]
     fn partial_write() {
         let mut stream = MemoryStream::new();
-        stream.write(&[0]).unwrap();
-        stream.write(&[1, 2]).unwrap();
-        stream.write(&[3, 4]).unwrap();
-        stream.write(&[5, 6, 7]).unwrap();
-        stream.write(&[8, 9, 10]).unwrap(); // stray values, shouldn't be read
+        stream.write_all(&[0]).unwrap();
+        stream.write_all(&[1, 2]).unwrap();
+        stream.write_all(&[3, 4]).unwrap();
+        stream.write_all(&[5, 6, 7]).unwrap();
+        stream.write_all(&[8, 9, 10]).unwrap(); // stray values, shouldn't be read
         assert_eq!(stream.read_value().unwrap(), 0x03020100);
         assert_eq!(stream.read_value().unwrap(), 0x07060504);
         assert!(stream.read_value().is_err());

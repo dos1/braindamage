@@ -22,7 +22,7 @@ impl<'input> Routine<'input> {
             state: State::new(),
             loops: vec![],
             skip: None,
-            input: input,
+            input,
         }
     }
 
@@ -32,10 +32,8 @@ impl<'input> Routine<'input> {
         if let Some(skip_index) = self.skip {
             if instruction == '[' {
                 self.loops.push(self.position);
-            } else if instruction == ']' {
-                if self.loops.pop().unwrap() == skip_index {
-                    self.skip = None;
-                }
+            } else if instruction == ']' && self.loops.pop().unwrap() == skip_index {
+                self.skip = None;
             }
         } else {
             match instruction {
@@ -66,7 +64,7 @@ impl<'input> Routine<'input> {
         }
         self.position += 1;
 
-        return result;
+        result
     }
 }
 
@@ -84,8 +82,8 @@ impl<'input> Iterator for Routine<'input> {
 
 pub fn run(code: &str, input: &mut dyn Input, output: &mut dyn Output) {
     for data in Routine::new(code, input) {
-        if data.is_some() {
-            output.write_value(data.unwrap()).unwrap();
+        if let Some(value) = data {
+            output.write_value(value).unwrap();
         }
     }
 }

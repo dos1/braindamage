@@ -25,11 +25,11 @@ impl State {
             memory: Vec::with_capacity(30000),
         };
         state.memory.push(Wrapping(0));
-        return state;
+        state
     }
 
     fn add_to_pointer(&mut self, value: i32) {
-        self.pointer = self.pointer + value;
+        self.pointer += value;
         if self.pointer < 0 {
             panic!("tried to set the pointer to negative address");
         }
