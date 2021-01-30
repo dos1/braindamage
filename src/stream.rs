@@ -18,7 +18,7 @@ pub trait InputOutput: Input + Output {}
 
 #[allow(dead_code)]
 pub struct InputInterface<'stream> {
-    stream: &'stream RefCell<Box<InputOutput>>
+    stream: &'stream RefCell<Box<dyn InputOutput>>
 }
 
 impl<'stream> Input for InputInterface<'stream> {
@@ -35,14 +35,14 @@ impl<'stream> io::Read for InputInterface<'stream> {
 
 #[allow(dead_code)]
 impl<'stream> InputInterface<'stream> {
-    pub fn new(stream: &'stream RefCell<Box<InputOutput>>) -> InputInterface<'stream> {
+    pub fn new(stream: &'stream RefCell<Box<dyn InputOutput>>) -> InputInterface<'stream> {
         InputInterface { stream: stream }
     }
 }
 
 #[allow(dead_code)]
 pub struct OutputInterface<'stream> {
-    stream: &'stream RefCell<Box<InputOutput>>
+    stream: &'stream RefCell<Box<dyn InputOutput>>
 }
 
 impl<'stream> Output for OutputInterface<'stream> {
@@ -62,7 +62,7 @@ impl<'stream> io::Write for OutputInterface<'stream> {
 
 #[allow(dead_code)]
 impl<'stream> OutputInterface<'stream> {
-    pub fn new(stream: &'stream RefCell<Box<InputOutput>>) -> OutputInterface<'stream> {
+    pub fn new(stream: &'stream RefCell<Box<dyn InputOutput>>) -> OutputInterface<'stream> {
         OutputInterface { stream: stream }
     }
 }
@@ -77,7 +77,7 @@ pub struct MemoryStream {
 
 impl Input for io::Stdin {
     fn read_value(&mut self) -> io::Result<i32> {
-        return Ok(try!(self.bytes().nth(0).unwrap()) as i32);
+        return Ok(self.bytes().nth(0).unwrap()? as i32);
     }
 }
 
@@ -86,7 +86,7 @@ impl Input for fs::File {
         let mut bytes:[u8; 4] = [0; 4];
         let mut iterator = self.bytes();
         for i in 0..3 {
-            bytes[i] = try!(iterator.next().unwrap());
+            bytes[i] = iterator.next().unwrap()?;
         }
         unsafe {
             return Ok(mem::transmute::<[u8; 4], i32>(bytes));
@@ -113,7 +113,7 @@ impl Input for io::Empty {
 impl Output for io::Stdout {
     fn write_value(&mut self, value: i32) -> io::Result<()> {
         // UTF-8
-        try!(self.write(&[value as u8]));
+        self.write(&[value as u8])?;
         Ok({})
     }
 }
@@ -123,7 +123,7 @@ impl Output for fs::File {
         // binary
         unsafe {
             let bytes = mem::transmute::<i32, [u8; 4]>(value);
-            try!(self.write(&bytes));
+            self.write(&bytes)?;
         }
         Ok({})
     }
@@ -227,7 +227,7 @@ mod tests {
     
     #[test]
     fn interfaces() {
-        let stream: RefCell<Box<InputOutput>> = RefCell::new(Box::new(MemoryStream::new()));
+        let stream: RefCell<Box<dyn InputOutput>> = RefCell::new(Box::new(MemoryStream::new()));
         let input = InputInterface::new(&stream);
         let mut output = OutputInterface::new(&stream);
         output.write(&[0, 1, 2, 3]).unwrap();

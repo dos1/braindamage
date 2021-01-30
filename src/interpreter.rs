@@ -8,11 +8,11 @@ struct Routine<'input> {
     loops: Vec<usize>,
     skip: bool,
     skip_index: usize,
-    input: &'input mut Input
+    input: &'input mut dyn Input
 }
 
 impl<'input> Routine<'input> {
-    fn new(code: &str, input: &'input mut Input) -> Routine<'input> {
+    fn new(code: &str, input: &'input mut dyn Input) -> Routine<'input> {
         let buffer: Vec<char> = code.chars().map(|x| if x.is_ascii() { x } else { '_' }).collect(); // filter out characters larger than 8-bit to simplify indexing
         Routine { code: buffer, position: 0, state: State::new(), loops: vec![], skip: false, skip_index: 0, input: input }
     }
@@ -76,7 +76,7 @@ impl<'input> Iterator for Routine<'input> {
 
 }
 
-pub fn run(code: &str, input: &mut Input, output: &mut Output) {
+pub fn run(code: &str, input: &mut dyn Input, output: &mut dyn Output) {
 
     for data in Routine::new(code, input) {
         if data.is_some() {
