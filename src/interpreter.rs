@@ -6,27 +6,25 @@ struct Routine<'input> {
     state: State,
     position: usize,
     loops: Vec<usize>,
-    skip: bool,
-    skip_index: usize,
+    skip: Option<usize>,
     input: &'input mut dyn Input
 }
 
 impl<'input> Routine<'input> {
     fn new(code: &str, input: &'input mut dyn Input) -> Routine<'input> {
         let buffer: Vec<char> = code.chars().map(|x| if x.is_ascii() { x } else { '_' }).collect(); // filter out characters larger than 8-bit to simplify indexing
-        Routine { code: buffer, position: 0, state: State::new(), loops: vec![], skip: false, skip_index: 0, input: input }
+        Routine { code: buffer, position: 0, state: State::new(), loops: vec![], skip: None, input: input }
     }
     
     fn exec(&mut self) -> Option<i32> {
         let instruction = self.code[self.position];
         let mut result : Option<i32> = None;
-        //println!("position: {}, state: {}; executing now: '{}', skip: {}", self.position, self.state, instruction, self.skip);
-        if self.skip {
+        if let Some(skip_index) = self.skip {
             if instruction == '[' {
                 self.loops.push(self.position);
             } else if instruction == ']' {
-                if self.loops.pop().unwrap() == self.skip_index {
-                    self.skip = false;
+                if self.loops.pop().unwrap() == skip_index {
+                    self.skip = None;
                 }
             }
         } else {
@@ -42,8 +40,7 @@ impl<'input> Routine<'input> {
             },
             '[' => {
                 if self.state.get_value() == 0 {
-                    self.skip = true;
-                    self.skip_index = self.position;
+                    self.skip = Some(self.position);
                 }
                 self.loops.push(self.position);
             },
